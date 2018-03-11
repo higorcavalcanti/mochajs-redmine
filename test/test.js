@@ -47,6 +47,7 @@ describe('User signup', () => {
 	const http = request(URL);
 	const agent = request.agent(URL);
 	
+	/*
 	it('should return 200', (done) => {
 		http.get('/')
 		.end( (err, res) => {
@@ -55,6 +56,7 @@ describe('User signup', () => {
 			done();
 		});
 	});
+	*/
 	
 	
 	it('should return a csrf-token', (done) => {
@@ -86,7 +88,7 @@ describe('User signup', () => {
 			done();
 		});		
 	});	
-	
+
 	it('should be logged in', (done) => {
 		agent.get( URL_ACCOUNT )
 		.end( (err, res) => {			
@@ -101,7 +103,6 @@ describe('User signup', () => {
 			done();
 		});		
 	});	
-	
 	
 	it('should return a csrf-token to logout', (done) => {
 		agent
@@ -151,7 +152,7 @@ describe('User signup', () => {
 13.	   ENTRE NA ABA DE "TAREFAS"
 14.	   FAÇA A PAGINAÇÃO DO GRID DE TAREFAS E VALIDE SE A 29ª TAREFA POSSUI O TIPO, SITUAÇÃO, PRIORIDADE E TÍTULO CONFORME OUTRO JSON DEVALIDAÇÃO DE TAREFAS
 */
-describe('Projects', function(){
+describe('Project', () => {
 	const http = request(URL);
 	const agent = request.agent(URL);
 	const project_name = Math.random().toString(36).substr(2, 10);
@@ -167,13 +168,10 @@ describe('Projects', function(){
 		"project[description]": "",
 		"project[identifier]": project_name,
 		"project[homepage]": "",
-		"project[is_public]": 0,
 		"project[is_public]": 1,
 		"project[inherit_members]": 0,
 		"project[enabled_module_names][]": "issue_tracking",
-		"project[enabled_module_names][]": "",
 		"project[tracker_ids][]": 1,
-		"project[tracker_ids][]": "",
 		"commit": "Criar"
 	};
 		
@@ -251,4 +249,76 @@ describe('Projects', function(){
 			done();
 		});		
 	});	
+		
+	
+	describe('Create tasks', () => {
+		
+		const ISSUES = 5; //Numeros de tarefas para criar
+		const URL_PROJECT_ISSUES = 'projects/' + project_name + '/issues';
+		const URL_PROJECT_ISSUES_NEW = URL_PROJECT_ISSUES + '/new';
+		const URL_ISSUES = 'issues';
+		
+		var issues = new Array(ISSUES);
+				
+		for(var i = 0; i < ISSUES; i++) {
+			issues[i] = {
+				'authenticity_token': '',
+				"issue[is_private]": 0,
+				"issue[tracker_id]": 1,
+				"issue[subject]": Math.random().toString(36).substr(2, 10),
+				"issue[description]": "",
+				//"issue[status_id]": getRandom(1, 7),
+				"issue[status_id]": 1,
+				"was_default_status": 1,
+				"issue[priority_id]": getRandom(3, 8),
+				"assigned_to_id": '',
+				"issue[parent_issue_id]": '',
+				"issue[start_date]": '2018-03-11',
+				"due_date": "",
+				"issue[estimated_hours]": '',
+				"issue[done_ratio]": getRandom(0, 10) * 10,
+				"commit": 'Criar'
+			};
+		}
+		
+		issues.forEach( (issue, index, arr) => {
+						
+			var desc_it_csrf = 'should return a csrf-token to create new issue in project \'' + project_name + "'";
+			var desc_it = 'should create issue '+index+' in project \'' + project_name + "'";
+			
+			it(desc_it_csrf, (done, i) => {
+				agent
+				.get( URL_PROJECT_ISSUES_NEW )
+				.end( (err, res) => {
+					expect( err ).to.be.a('null');
+					expect( res.statusCode ).to.equal(200);			
+					
+					var html = new JSDOM( res.text );
+					token = html.window.document.querySelector("input[name=authenticity_token]").value;
+										
+					arr[index].authenticity_token = token;
+					
+					expect( token ).to.be.a('string');			
+					done();
+				});		
+			});
+			
+			it(desc_it, (done) => {
+				agent.post( URL_PROJECT_ISSUES )
+				.set('Content-Type', 'application/x-www-form-urlencoded')
+				.send( issue )
+				.end( (err, res) => {						
+					expect( err ).to.be.a('null');
+					expect( res.statusCode ).to.equal( 302 );
+					expect( res.headers.location ).to.have.string( URL + URL_ISSUES + '/' );
+					done();
+				});					
+			});
+		});
+	});
 });
+
+
+function getRandom(min, max) {
+  return Math.random() * (max - min) + min;
+}
